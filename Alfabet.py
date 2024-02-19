@@ -16,6 +16,8 @@ import pygame
 import pygame as pg
 import pygame.freetype as freetype
 
+import random
+
 
 os.environ["SDL_IME_SHOW_UI"] = "1"
 
@@ -52,6 +54,8 @@ class TextInput:
         # position of chatlist and chatbox
 
         self.currentCharacter=""
+        self.currentFolder=""
+        self.selectedSubFolder=""
         self.isDrawing = False
         self.isPlayingSound = False
         # Freetype
@@ -68,13 +72,11 @@ class TextInput:
         Updates the text input widget
         """
         # Makes it possible to redraw and replay sound if the same character was pushed after tasks are finished
-        print("mixer state " + str(pg.mixer.get_busy()))
-        print("drawing state " + str(self.isDrawing))
         if (not pg.mixer.get_busy()) and (not self.isDrawing):
             self.currentCharacter = ""
 
         for event in events:
-            if event.type == pg.TEXTINPUT and event.text in "abcdefghijklmnopqrstuvwxyz1234567890":
+            if event.type == pg.TEXTINPUT and event.text in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890":
                 if self.print_event:
                     print(event)
                 #keeping track of previous state
@@ -82,6 +84,11 @@ class TextInput:
                     return
                 else:
                     self.currentCharacter = event.text.upper()
+                    folders = os.listdir(os.path.join(main_dir,"data/"+self.currentCharacter))
+                    print(folders)
+                    if len(folders) > 0: self.selectedSubFolder = random.choice(folders)
+                    self.currentFolder = "data/"+ self.currentCharacter + "/" + self.selectedSubFolder
+                    print("selected folder = "+self.currentFolder)
                     self.draw(screen)
                     self.playSound()
 
@@ -95,6 +102,17 @@ class TextInput:
         """
         self.isDrawing = True
         print("Drawing screen")
+
+        try:
+            with open(os.path.join(main_dir, self.currentFolder, "color.txt"), "r") as color:
+                self.BG_COLOR = color.readline()
+        except:
+            self.BG_COLOR = "black"
+
+        if self.BG_COLOR == "white":
+            self.text_color = "black"
+        else:
+            self.text_color = "white"
         screen.fill(self.BG_COLOR)
         characterRect = self.font.get_rect(self.currentCharacter)
         characterRect.center = screen.get_rect().center
@@ -105,11 +123,11 @@ class TextInput:
         try:
             #stop previous sound if necessary
             pg.mixer.stop()
-            sound = pg.mixer.Sound(os.path.join(main_dir, "data", self.currentCharacter+".wav"))
+            sound = pg.mixer.Sound(os.path.join(main_dir, self.currentFolder, self.selectedSubFolder+".wav"))
             print("Playing Sound...")
             sound.play()
         except FileNotFoundError:
-            print("File for " + self.currentCharacter + "not found yet")
+            print("File for " + self.currentCharacter + " not found yet")
 
 class Game:
     """
@@ -146,9 +164,11 @@ class Game:
                 if event.type == pg.QUIT:
                     pg.quit()
                     return
+                ''' #Escape to exit the game, disabled for now to just stay in the game
                 elif event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     pygame.quit()
                     return
+                '''
 
             self.text_input.update(events, self.screen)
             pg.display.update()
